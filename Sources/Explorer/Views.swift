@@ -110,10 +110,11 @@ struct SidebarView: View {
     }
 
     private var roots: [TreeNode] {
+        _ = state.volumesVersion
         var r = [TreeNode(url: Self.home, title: NSUserName()),
                  TreeNode(url: URL(filePath: "/"), title: "Macintosh HD")]
         let vols = FileManager.default.mountedVolumeURLs(includingResourceValuesForKeys: nil, options: [.skipHiddenVolumes]) ?? []
-        r += vols.filter { $0.path != "/" }.map { TreeNode(url: $0) }
+        r += vols.filter { $0.path != "/" && !state.isRemote($0) }.map { TreeNode(url: $0) }
         return r
     }
 
@@ -135,6 +136,18 @@ struct SidebarView: View {
                         .dropDestination(for: URL.self) { urls, _ in state.drop(urls, into: url); return true }
                         .contextMenu { Button("Unpin from Quick access") { state.togglePin(url) } }
                 }
+            }
+            Section("Network") {
+                ForEach(state.networkVolumes, id: \.self) { v in
+                    Label { Text(FileManager.default.displayName(atPath: v.path)) } icon: {
+                        Image(systemName: "network").foregroundStyle(Theme.accent)
+                    }
+                    .tag(v.normalized)
+                    .contextMenu { Button("Eject") { try? NSWorkspace.shared.unmountAndEjectDevice(at: v) } }
+                }
+                Button { state.connectToServer() } label: {
+                    Label { Text("Connect to server…") } icon: { Image(systemName: "externaldrive.badge.plus").foregroundStyle(.secondary) }
+                }.buttonStyle(.plain)
             }
             Section("This Mac") {
                 OutlineGroup(roots, children: \.children) { node in
@@ -178,10 +191,7 @@ struct AddressBar: View {
                     ScrollView(.horizontal, showsIndicators: false) {
                         HStack(spacing: 0) {
                             ForEach(Array(state.breadcrumbs.enumerated()), id: \.offset) { i, c in
-                                if i > 0 {
-                                    Image(systemName: "chevron.right").font(.system(size: 9, weight: .semibold))
-                                        .foregroundStyle(.secondary).padding(.horizontal, 2)
-                                }
+                                if i > 0 { CrumbChevron(state: state, parent: state.breadcrumbs[i - 1].url, current: c.url) }
                                 Button(c.title) { state.go(to: c.url) }
                                     .buttonStyle(.borderless).foregroundStyle(.primary).padding(.horizontal, 4)
                                     .id(i)
@@ -203,6 +213,43 @@ struct AddressBar: View {
         .contentShape(Rectangle())
         .onTapGesture { state.editingPath = true }
         .onChange(of: state.editingPath) { if state.editingPath { state.pathText = state.current.path; focused = true } }
+    }
+}
+
+/// The `>` between breadcrumbs: click for a dropdown of that folder's sub-folders (like Explorer).
+struct CrumbChevron: View {
+    let state: ExplorerState
+    let parent: URL
+    let current: URL
+    @State private var open = false
+    @State private var folders: [URL] = []
+
+    var body: some View {
+        Button { open.toggle() } label: {
+            Image(systemName: open ? "chevron.down" : "chevron.right").font(.system(size: 9, weight: .semibold))
+                .foregroundStyle(.secondary).frame(width: 14, height: 20).contentShape(Rectangle())
+        }
+        .buttonStyle(.plain)
+        .popover(isPresented: $open, arrowEdge: .bottom) {
+            ScrollView {
+                VStack(alignment: .leading, spacing: 0) {
+                    ForEach(folders, id: \.self) { u in
+                        Button { open = false; state.go(to: u) } label: {
+                            HStack(spacing: 6) {
+                                Image(systemName: "folder.fill").foregroundStyle(Theme.folder)
+                                Text(u.lastPathComponent).fontWeight(u.normalized == current.normalized ? .semibold : .regular)
+                                Spacer(minLength: 20)
+                            }
+                            .padding(.horizontal, 10).padding(.vertical, 4).contentShape(Rectangle())
+                        }.buttonStyle(.plain)
+                    }
+                    if folders.isEmpty { Text("No subfolders").foregroundStyle(.secondary).padding(10) }
+                }
+                .padding(.vertical, 4)
+            }
+            .frame(minWidth: 180, maxHeight: 360)
+            .task { folders = TreeNode(url: parent).children?.map(\.url) ?? [] }
+        }
     }
 }
 
@@ -279,6 +326,11 @@ struct StatusBar: View {
                 Text("\(sel.count) item\(sel.count == 1 ? "" : "s") selected" + (total > 0 ? "  \(ByteCountFormatter.string(fromByteCount: total, countStyle: .file))" : ""))
             }
             Spacer()
+            if let job = state.transferJob, job.visible {
+                ProgressView(value: job.fraction).frame(width: 150)
+                Text("\(job.title) \(job.currentName)…").lineLimit(1).frame(maxWidth: 220, alignment: .leading)
+                Button("Cancel") { job.cancel() }
+            }
             if !state.searchText.isEmpty { Text("Search results in \(state.title)") }
             Button { state.viewMode = .details } label: { Image(systemName: "list.bullet.below.rectangle") }
                 .foregroundStyle(state.viewMode == .details ? Theme.accent : .secondary).help("Details")

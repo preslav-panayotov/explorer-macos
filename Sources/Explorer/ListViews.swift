@@ -74,6 +74,45 @@ struct RenameField: View {
     }
 }
 
+/// Reports a row's frame (for drag-box selection) and hover (for right-click selection).
+struct RowTracking: ViewModifier {
+    let state: ExplorerState
+    let url: URL
+    @Binding var hover: Bool
+
+    func body(content: Content) -> some View {
+        content
+            .onGeometryChange(for: CGRect.self) { $0.frame(in: .named("content")) } action: { state.rowFrames[url] = $0 }
+            .onHover { h in hover = h; state.noteHover(url, h) }
+    }
+}
+
+/// Rubber-band selection rectangle + gesture for the empty background of a list.
+struct MarqueeLayer: View {
+    let state: ExplorerState
+
+    var body: some View {
+        ZStack(alignment: .topLeading) {
+            Color.clear.contentShape(Rectangle())
+                .onTapGesture { state.selectNone() }
+                .gesture(DragGesture(minimumDistance: 4, coordinateSpace: .named("content"))
+                    .onChanged { v in
+                        let r = CGRect(x: min(v.startLocation.x, v.location.x), y: min(v.startLocation.y, v.location.y),
+                                       width: abs(v.location.x - v.startLocation.x), height: abs(v.location.y - v.startLocation.y))
+                        state.updateMarquee(r, additive: NSEvent.modifierFlags.contains(.command))
+                    }
+                    .onEnded { _ in state.endMarquee() })
+            if let r = state.marquee {
+                Rectangle().fill(Theme.accent.opacity(0.18))
+                    .overlay(Rectangle().stroke(Theme.accent, lineWidth: 1))
+                    .frame(width: r.width, height: r.height)
+                    .offset(x: r.minX, y: r.minY)
+                    .allowsHitTesting(false)
+            }
+        }
+    }
+}
+
 func clickModifiers() -> (shift: Bool, toggle: Bool) {
     let f = NSEvent.modifierFlags
     return (f.contains(.shift), f.contains(.command) || f.contains(.control))
@@ -91,7 +130,7 @@ struct DetailsList: View {
             ScrollViewReader { proxy in
                 ScrollView {
                     ZStack(alignment: .top) {
-                        Color.clear.contentShape(Rectangle()).onTapGesture { state.selectNone() }
+                        MarqueeLayer(state: state)
                         LazyVStack(spacing: 0) {
                             ForEach(groups, id: \.title) { g in
                                 if state.group != .none { GroupHeader(title: g.title, count: g.items.count) }
@@ -99,9 +138,10 @@ struct DetailsList: View {
                             }
                         }
                     }
+                    .coordinateSpace(name: "content")
                     .frame(maxWidth: .infinity, minHeight: 300)
                 }
-                .onChange(of: state.anchor) { if let a = state.anchor { proxy.scrollTo(a) } }
+                .onChange(of: state.anchor) { if let a = state.anchor, state.marquee == nil { proxy.scrollTo(a) } }
             }
             .contextMenu { FileContextMenu(state: state, sel: []) }
         }
@@ -197,7 +237,7 @@ private struct DetailRow: View {
             .fill(selected ? Theme.selection : (hover ? Theme.hover : .clear))
             .padding(.horizontal, 4))
         .contentShape(Rectangle())
-        .onHover { hover = $0 }
+        .modifier(RowTracking(state: state, url: item.url, hover: $hover))
         .onTapGesture {
             let m = clickModifiers()
             state.click(item, shift: m.shift, toggle: m.toggle)
@@ -226,7 +266,7 @@ struct IconsGrid: View {
         ScrollViewReader { proxy in
             ScrollView {
                 ZStack(alignment: .top) {
-                    Color.clear.contentShape(Rectangle()).onTapGesture { state.selectNone() }
+                    MarqueeLayer(state: state)
                     LazyVStack(alignment: .leading, spacing: 0) {
                         ForEach(groups, id: \.title) { g in
                             if state.group != .none { GroupHeader(title: g.title, count: g.items.count) }
@@ -241,9 +281,10 @@ struct IconsGrid: View {
                     }
                     .padding(.vertical, 8)
                 }
+                .coordinateSpace(name: "content")
                 .frame(maxWidth: .infinity, minHeight: 300)
             }
-            .onChange(of: state.anchor) { if let a = state.anchor { proxy.scrollTo(a) } }
+            .onChange(of: state.anchor) { if let a = state.anchor, state.marquee == nil { proxy.scrollTo(a) } }
         }
         .background(GeometryReader { g in Color.clear.onAppear { width = g.size.width }.onChange(of: g.size.width) { width = g.size.width } })
         .background(Theme.background)
@@ -281,7 +322,7 @@ struct IconsGrid: View {
             .opacity(item.isHidden ? 0.55 : 1)
             .background(RoundedRectangle(cornerRadius: 4).fill(selected ? Theme.selection : (hover ? Theme.hover : .clear)))
             .contentShape(Rectangle())
-            .onHover { hover = $0 }
+            .modifier(RowTracking(state: state, url: item.url, hover: $hover))
             .onTapGesture {
                 let m = clickModifiers()
                 state.click(item, shift: m.shift, toggle: m.toggle)

@@ -142,6 +142,35 @@ extension ExplorerState {
         transfer(Array(urls), into: dest.normalized, move: move)
     }
 
+    // MARK: Network
+
+    func isRemote(_ volume: URL) -> Bool {
+        (try? volume.resourceValues(forKeys: [.volumeIsLocalKey]))?.volumeIsLocal == false
+    }
+
+    /// Mounted network shares (SMB / NFS / AFP / WebDAV…).
+    var networkVolumes: [URL] {
+        _ = volumesVersion
+        let vols = FileManager.default.mountedVolumeURLs(includingResourceValuesForKeys: [.volumeIsLocalKey], options: [.skipHiddenVolumes]) ?? []
+        return vols.filter { isRemote($0) }
+    }
+
+    func connectToServer() {
+        let a = NSAlert()
+        a.messageText = "Connect to server"
+        a.informativeText = "Enter a server address, for example smb://server/share or nfs://host/path."
+        let field = NSTextField(frame: NSRect(x: 0, y: 0, width: 300, height: 24))
+        field.placeholderString = "smb://server/share"
+        a.accessoryView = field
+        a.addButton(withTitle: "Connect"); a.addButton(withTitle: "Cancel")
+        guard a.runModal() == .alertFirstButtonReturn else { return }
+        let text = field.stringValue.trimmingCharacters(in: .whitespaces)
+        guard let url = URL(string: text), let scheme = url.scheme, ["smb", "nfs", "afp", "ftp", "http", "https", "vnc"].contains(scheme.lowercased()) else {
+            errorMessage = "“\(text)” isn't a valid server address."; return
+        }
+        NSWorkspace.shared.open(url)   // macOS mounts the share; it then appears under Network
+    }
+
     // MARK: Misc
 
     func openInTerminal(_ dir: URL? = nil) {

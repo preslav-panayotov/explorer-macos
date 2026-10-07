@@ -74,6 +74,14 @@ final class ExplorerState {
     var kindW: CGFloat = 140
     var sizeW: CGFloat = 90
     var anchor: URL?
+    var transferJob: TransferJob?
+    var marquee: CGRect?
+    var volumesVersion = 0
+    @ObservationIgnored var hoverURL: URL?
+    @ObservationIgnored var rowFrames: [URL: CGRect] = [:]
+    @ObservationIgnored private var marqueeBase: Set<URL>?
+    @ObservationIgnored private var rightClickMonitor: Any?
+    @ObservationIgnored private var mountObservers: [NSObjectProtocol] = []
     @ObservationIgnored private var typeBuffer = ""
     @ObservationIgnored private var typeTime = Date.distantPast
 
@@ -88,6 +96,17 @@ final class ExplorerState {
         current = start.normalized
         reload()
         watch()
+        let nc = NSWorkspace.shared.notificationCenter
+        for n in [NSWorkspace.didMountNotification, NSWorkspace.didUnmountNotification] {
+            mountObservers.append(nc.addObserver(forName: n, object: nil, queue: .main) { [weak self] _ in
+                MainActor.assumeIsolated { self?.volumesVersion += 1 }
+            })
+        }
+    }
+
+    deinit {
+        if let m = rightClickMonitor { NSEvent.removeMonitor(m) }
+        mountObservers.forEach { NSWorkspace.shared.notificationCenter.removeObserver($0) }
     }
 
     // MARK: Derived
@@ -241,6 +260,7 @@ final class ExplorerState {
         searchText = ""
         searchResults = []
         selection = []
+        rowFrames.removeAll()
         editingPath = false
         reload()
         watch()
@@ -400,37 +420,130 @@ final class ExplorerState {
         return candidate
     }
 
+    private func sameVolume(_ a: URL, _ b: URL) -> Bool {
+        let id = { (u: URL) in (try? u.resourceValues(forKeys: [.volumeIdentifierKey]))?.volumeIdentifier as? NSObject }
+        return id(a) != nil && id(a) == id(b)
+    }
+
+    /// Copies or moves `sources` into `dir`. Same-volume moves are instant; everything else runs in the
+    /// background with a progress bar and Cancel. Returns the planned destination URLs.
     @discardableResult
     func transfer(_ sources: [URL], into dir: URL, move: Bool) -> [URL] {
-        let fm = FileManager.default
-        var created: [URL] = []
-        var pairs: [(from: URL, to: URL)] = []
+        var plan: [(src: URL, dest: URL)] = []
+        var taken = Set<String>()
         for src in sources {
             if move && src.deletingLastPathComponent().standardizedFileURL == dir.standardizedFileURL { continue }
-            if dir.standardizedFileURL.path.hasPrefix(src.standardizedFileURL.path + "/") {
+            if dir.standardizedFileURL.path.hasPrefix(src.standardizedFileURL.path + "/") || dir.standardizedFileURL == src.standardizedFileURL {
                 errorMessage = "Can't put “\(src.lastPathComponent)” inside itself."
                 continue
             }
-            let dest = Self.uniqueURL(in: dir, name: src.lastPathComponent)
-            do {
-                if move { try fm.moveItem(at: src, to: dest) } else { try fm.copyItem(at: src, to: dest) }
-                created.append(dest.normalized)
-                pairs.append((src.normalized, dest.normalized))
-            } catch { errorMessage = error.localizedDescription }
+            var dest = Self.uniqueURL(in: dir, name: src.lastPathComponent)
+            var n = 2
+            while taken.contains(dest.path) {
+                dest = Self.uniqueURL(in: dir, name: "\(n) " + src.lastPathComponent, suffix: " - Copy"); n += 1
+            }
+            taken.insert(dest.path)
+            plan.append((src, dest))
         }
-        if !created.isEmpty { record(move ? .move(pairs) : .create(created)) }
+        guard !plan.isEmpty else { return [] }
+
+        if move && plan.allSatisfy({ sameVolume($0.src, dir) }) {
+            var pairs: [(from: URL, to: URL)] = []
+            for p in plan {
+                do { try FileManager.default.moveItem(at: p.src, to: p.dest); pairs.append((p.src.normalized, p.dest.normalized)) }
+                catch { errorMessage = error.localizedDescription }
+            }
+            finishTransfer(done: pairs, move: true, dir: dir)
+        } else {
+            runTransfer(plan, move: move, dir: dir)
+        }
+        return plan.map { $0.dest.normalized }
+    }
+
+    private func runTransfer(_ plan: [(src: URL, dest: URL)], move: Bool, dir: URL) {
+        let job = TransferJob(title: move ? "Moving" : "Copying", count: plan.count)
+        transferJob = job
+        let counter = job.counter
+        Task.detached { [plan] in
+            counter.setTotal(TransferEngine.totalBytes(plan.map(\.src)))
+            var done: [(from: URL, to: URL)] = []
+            var failure: String?
+            for p in plan {
+                if counter.isCancelled { break }
+                counter.beginItem(p.src.lastPathComponent)
+                do {
+                    try TransferEngine.copy(p.src, to: p.dest, counter: counter)
+                    if move { try FileManager.default.removeItem(at: p.src) }
+                    done.append((p.src.normalized, p.dest.normalized))
+                } catch {
+                    try? FileManager.default.removeItem(at: p.dest)
+                    if !counter.isCancelled { failure = error.localizedDescription }
+                    break
+                }
+            }
+            let finalDone = done, finalFailure = failure
+            await MainActor.run {
+                if let finalFailure { self.errorMessage = finalFailure }
+                self.finishTransfer(done: finalDone, move: move, dir: dir)
+                self.transferJob = nil
+            }
+        }
+        Task { @MainActor [weak self, weak job] in
+            while let self, let job, self.transferJob === job {
+                let s = job.counter.snapshot
+                job.fraction = s.fraction
+                job.currentName = s.name
+                job.visible = Date().timeIntervalSince(job.started) > 0.35
+                try? await Task.sleep(for: .milliseconds(100))
+            }
+        }
+    }
+
+    private func finishTransfer(done: [(from: URL, to: URL)], move: Bool, dir: URL) {
+        if !done.isEmpty { record(move ? .move(done) : .create(done.map(\.to))) }
         reload()
-        if dir == current, !created.isEmpty { selection = Set(created) }
-        return created
+        if dir.normalized == current, !done.isEmpty { selection = Set(done.map(\.to)) }
     }
 
     /// Drag & drop: same volume moves, different volume copies; ⌥ flips.
     func drop(_ urls: [URL], into dir: URL) {
-        let vol = { (u: URL) in (try? u.resourceValues(forKeys: [.volumeIdentifierKey]))?.volumeIdentifier as? NSObject }
-        let same = urls.first.map { vol($0) == vol(dir) } ?? false
+        let same = urls.first.map { sameVolume($0, dir) } ?? false
         let flip = NSEvent.modifierFlags.contains(.option)
         transfer(urls, into: dir, move: same != flip)
     }
+
+    // MARK: Context-menu selection, marquee, hover
+
+    func noteHover(_ url: URL, _ hovering: Bool) {
+        if hovering { hoverURL = url } else if hoverURL == url { hoverURL = nil }
+    }
+
+    /// Windows selects the item you right-click (unless it is already part of the selection).
+    func prepareContextMenu(for url: URL?) {
+        guard let url, !selection.contains(url) else { return }
+        selection = [url]
+        anchor = url
+    }
+
+    func installRightClickMonitor(for window: NSWindow) {
+        guard rightClickMonitor == nil else { return }
+        rightClickMonitor = NSEvent.addLocalMonitorForEvents(matching: [.rightMouseDown, .leftMouseDown]) { [weak self, weak window] e in
+            guard e.window === window, e.type == .rightMouseDown || e.modifierFlags.contains(.control) else { return e }
+            MainActor.assumeIsolated { self?.prepareContextMenu(for: self?.hoverURL) }
+            return e
+        }
+    }
+
+    /// Drag-box (rubber-band) selection; `rect` is in the scroll content's coordinate space.
+    func updateMarquee(_ rect: CGRect, additive: Bool) {
+        if marquee == nil { marqueeBase = additive ? selection : [] }
+        marquee = rect
+        let hit = rowFrames.filter { $0.value.intersects(rect) }.map(\.key)
+        selection = (marqueeBase ?? []).union(hit)
+        if let last = hit.first { anchor = last }
+    }
+
+    func endMarquee() { marquee = nil; marqueeBase = nil }
 
     @discardableResult
     func newFolder() -> URL? {

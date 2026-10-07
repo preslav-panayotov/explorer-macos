@@ -13,6 +13,8 @@ trap 'rm -rf "$STAGE"' EXIT
 
 cp -R "$APP" "$STAGE/Explorer.app"
 ln -s /Applications "$STAGE/Applications"
+cp uninstall.sh "$STAGE/Uninstall Explorer.command"
+chmod +x "$STAGE/Uninstall Explorer.command"
 cat > "$STAGE/Read Me.txt" <<TXT
 Explorer $VERSION
 
@@ -21,6 +23,9 @@ Explorer $VERSION
    (the app is not notarized by Apple).
 3. Optional: in Explorer choose  Explorer menu -> Install 'explorermac' Command...
    to open folders from Terminal:  explorermac /Users
+
+To remove everything later: double-click "Uninstall Explorer.command" (right-click -> Open the first time),
+or run:  brew uninstall --cask explorer-macos   (if you installed with Homebrew)
 
 Source and docs: https://github.com/preslav-panayotov/explorer-macos
 TXT

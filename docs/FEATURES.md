@@ -11,6 +11,7 @@ Everything the app can do, organised the way Windows File Explorer organises it.
 - [Archives and shortcuts](#archives-and-shortcuts)
 - [Properties and the Details pane](#properties-and-the-details-pane)
 - [Search](#search)
+- [Network](#network)
 - [Windows and tabs](#windows-and-tabs)
 - [Terminal command](#terminal-command-explorermac)
 - [Keyboard shortcuts](#keyboard-shortcuts)
@@ -33,7 +34,7 @@ Light and dark appearance follow macOS, using the Windows 11 palette (yellow fol
 ## Navigation
 
 - **Back / Forward / Up** — toolbar buttons, ⌘[ ⌘] ⌘↑. After *Up*, the folder you came from is selected.
-- **Address bar** — click a breadcrumb to jump there; click the empty area or press ⌘L to type a path (`~` is expanded). Enter to go, Esc to cancel. Typing a path to a file opens it. Unknown paths show an error instead of navigating.
+- **Address bar** — click a breadcrumb to jump there; click the **`>` between breadcrumbs** for a dropdown of that folder's sub-folders; click the empty area or press ⌘L to type a path (`~` is expanded). Enter to go, Esc to cancel. Typing a path to a file opens it. Unknown paths show an error instead of navigating.
 - **Refresh** — ⌘R or the button in the address bar. The list also refreshes automatically when files change on disk (even from other apps).
 - **Home** — ⇧⌘H.
 - **Folder tree** — expand disks and folders lazily; hidden folders and app bundles are skipped.
@@ -57,6 +58,8 @@ Light and dark appearance follow macOS, using the Windows 11 palette (yellow fol
 ## Selecting items
 
 - Click to select; ⌘-click toggles; ⇧-click selects a range.
+- **Drag-box selection:** press on empty space and drag a rectangle; hold ⌘ to add to the current selection. Works in every view.
+- **Right-click selects** the item under the cursor (unless it is already in the selection, which is kept as is).
 - ↑ ↓ (and ← → in icon views) move the selection; add ⇧ to extend; Home / End jump to first / last.
 - Type letters to jump to the item starting with them (type-to-select).
 - ⌘A select all, ⇧⌘I invert selection, Esc or clicking empty space clears it.
@@ -98,6 +101,10 @@ Quick Look · Print (files) · **Send to ▸** (Desktop, Documents, Compressed f
 
 Safety: a folder can’t be moved or copied into itself; failures are shown in an alert and never leave half-finished state silently.
 
+### Progress and cancel
+
+Copies, and moves between drives, run in the background. After a moment a progress bar with the current item and a **Cancel** button appears in the status bar; cancelling stops immediately and removes the partial copy. Same-drive moves are instant, and APFS copies are clones (instant, no extra space until modified). Folders are copied recursively with permissions, dates and extended attributes preserved.
+
 ## Archives and shortcuts
 
 - **Compress to ZIP file** — one item → `<name>.zip`; several → `Archive.zip`; the new archive is selected.
@@ -113,6 +120,10 @@ Safety: a folder can’t be moved or copied into itself; failures are shown in a
 ## Search
 
 Type in the toolbar search field to search the current folder **and all sub-folders** (up to 5,000 results). Results appear in the normal list with the usual sorting, grouping and context menus; a spinner shows while searching and the status bar says “Search results in …”. Navigating clears the search.
+
+## Network
+
+The navigation pane has a **Network** section listing mounted shares (SMB, NFS, AFP, WebDAV…) with *Eject* in the right-click menu, and **Connect to server…** which accepts `smb://`, `nfs://`, `afp://`, `ftp://`, `http(s)://` or `vnc://` addresses and lets macOS mount them. Drives and shares appear and disappear live as they are mounted or ejected.
 
 ## Windows and tabs
 
@@ -179,7 +190,8 @@ open -n build/Explorer.app --args --path ~/Documents --view "Large icons" \
 
 ## Behaviour notes
 
+- The app has its own icon (`Tools/make_icon.swift` regenerates it).
 - The app is **not sandboxed** so it can browse your whole disk. macOS will ask for permission to Documents, Downloads, etc.; grant *Full Disk Access* for unrestricted browsing.
 - Archives are handled by the system tools `zip`, `ditto` and `tar`; printing uses `lpr`; image rotation uses `sips`.
 - Shortcuts are macOS aliases, not Windows `.lnk` files.
-- Not implemented in 1.0.0: Home/Gallery pages, drag-box selection, Tiles and Content views, *Restore previous versions*, *Give access to*.
+- Not implemented in 1.0.0: Home/Gallery pages, Tiles and Content views, *Restore previous versions*, *Give access to*.

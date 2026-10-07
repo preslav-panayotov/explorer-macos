@@ -1,12 +1,18 @@
-## Explorer 1.1.0
+## Explorer 1.2.0
 
 **New**
-- **Thumbnails** — Medium / Large / Extra large icon views now show real previews for images, videos and PDFs
-- **`explorermac <dir>`** — open any folder from the terminal (`explorermac /Users`). Install it from the app: *Explorer menu → Install ‘explorermac’ Command…*
+- **Right-click selects the item** under the cursor, like Windows
+- **Drag-box selection** — drag a rectangle on empty space (⌘ to add)
+- **Progress bar with Cancel** for copies and cross-drive moves; the window no longer freezes on big copies
+- **Breadcrumb dropdowns** — click `>` for the folder's sub-folders
+- **Network section** with mounted shares and *Connect to server…*
+- **App icon**
+- **Uninstaller** (`uninstall.sh`, also inside the DMG) and a **Homebrew cask**
 
-**Fixed**
-- Launching with a folder no longer leaves an extra home-folder window
+```bash
+brew install --cask preslav-panayotov/tap/explorer-macos
+```
 
 Full feature list: [docs/FEATURES.md](docs/FEATURES.md) · Changes: [CHANGELOG.md](CHANGELOG.md)
 
-**Install:** open `Explorer-1.1.0.dmg` and drag Explorer.app to Applications (or unzip `Explorer-1.1.0-macOS.zip` and move `Explorer.app` to `/Applications`), then right-click → Open the first time (the app is not notarized). Requires macOS 15+. SHA-256 is in the attached `.sha256` file.
+**Install:** open `Explorer-1.2.0.dmg` and drag Explorer.app to Applications (or unzip `Explorer-1.2.0-macOS.zip`), then right-click → Open the first time (the app is not notarized). Requires macOS 15+. SHA-256 files are attached.

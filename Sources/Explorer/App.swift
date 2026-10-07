@@ -42,7 +42,7 @@ struct WindowAccessor: NSViewRepresentable {
     let state: ExplorerState
     func makeNSView(context: Context) -> NSView {
         let v = NSView()
-        DispatchQueue.main.async { if let w = v.window { WindowTabs.configure(w); WindowTabs.register(state, w) } }
+        DispatchQueue.main.async { if let w = v.window { WindowTabs.configure(w); WindowTabs.register(state, w); state.installRightClickMonitor(for: w) } }
         return v
     }
     func updateNSView(_ nsView: NSView, context: Context) {}

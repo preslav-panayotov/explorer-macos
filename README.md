@@ -1,3 +1,5 @@
+<p align="center"><img src="docs/icon.png" width="128" alt="Explorer icon"></p>
+
 # Explorer for macOS
 
 A native macOS file manager that looks and works like **Windows 11 File Explorer** — built with Swift and SwiftUI/AppKit. Open source, no dependencies.
@@ -34,6 +36,8 @@ If you're a Windows person stuck on a Mac (or just tired of Finder), this is for
 - Details view with resizable, sortable columns; six view modes (Extra large → Small icons, List, Details)
 - Group by Name / Date modified / Type / Size, Details pane with thumbnail, status bar
 - Real thumbnails for images, videos and PDFs in the icon views
+- Drag-box (rubber-band) selection, right-click selects the item under the cursor, breadcrumb dropdowns for sub-folders
+- Network section (mounted shares + *Connect to server…*), live volume list
 - Windows 11 colours in light and dark mode, inline rename, native macOS tabs (⌘T)
 
 **Right-click menus** (modelled on Windows 11)
@@ -44,6 +48,7 @@ If you're a Windows person stuck on a Mac (or just tired of Finder), this is for
 **Behaviour**
 - Real **Cut & Paste** (move), "name - Copy" naming on conflicts, multi-level **Undo** (rename, move, copy, delete, create)
 - Drag & drop: same volume moves, different volume copies, ⌥ flips
+- Copy/move runs in the background with a **progress bar and Cancel**; APFS copies are instant clones
 - Live refresh when files change outside the app
 
 ## Keyboard shortcuts
@@ -64,13 +69,18 @@ If you're a Windows person stuck on a Mac (or just tired of Finder), this is for
 
 ## Install
 
-**Disk image (recommended):** download `Explorer-<version>.dmg` from the [Releases](../../releases) page, open it and drag **Explorer.app** onto **Applications**.
+**Homebrew:**
+```bash
+brew install --cask preslav-panayotov/tap/explorer-macos
+```
+
+**Disk image:** download `Explorer-<version>.dmg` from the [Releases](../../releases) page, open it and drag **Explorer.app** onto **Applications**.
 
 **Zip:** alternatively download `Explorer-<version>-macOS.zip`, unzip it and move **Explorer.app** to `/Applications`.
 
-The app is ad-hoc signed but not notarized, so the first time: **right-click → Open** (or run `xattr -dr com.apple.quarantine /Applications/Explorer.app`). Verify downloads with the `.sha256` files attached to each release.
+The app is ad-hoc signed but not notarized (that requires a paid Apple Developer account), so the first time: **right-click → Open** (or run `xattr -dr com.apple.quarantine /Applications/Explorer.app`). Verify downloads with the `.sha256` files attached to each release.
 
-**Uninstall:** quit Explorer and delete `/Applications/Explorer.app`. Optionally remove the terminal command (`rm "$(which explorermac)"`) and saved settings (`defaults delete com.local.explorer`).
+**Uninstall:** run `./uninstall.sh` (also inside the DMG as *Uninstall Explorer.command*, or `brew uninstall --cask explorer-macos`). It removes the app, the `explorermac` command and saved settings — use `--dry-run` to preview or `--keep-settings` to keep your pinned folders.
 
 ## Terminal command: `explorermac`
 
@@ -110,12 +120,15 @@ Sources/Explorer/
   FileActions.swift    compress/extract, shortcuts, New menu, Open with, Share, Send to
   Thumbnails.swift     Quick Look thumbnails for the icon views
   CLIInstaller.swift   installs the `explorermac` terminal command
+  TransferEngine.swift copy/move engine with progress and cancel
   Properties.swift     Properties dialog and Details pane
   FileItem.swift       file model, icon cache, folder-tree nodes
   Theme.swift          Windows 11 palette and folder icon
 build_app.sh / make_dmg.sh / release.sh   build the .app, the .dmg, and a full release package
 docs/                  FEATURES.md (full reference) and screenshots
-Resources/explorermac  the terminal launcher script (bundled into the app)
+Resources/              explorermac (terminal launcher), AppIcon.icns
+Tools/make_icon.swift   regenerates the app icon
+uninstall.sh            removes app, command and settings
 Tests/ExplorerTests/   unit tests (navigation, file ops, undo, archives, grouping…)
 ```
 
@@ -136,8 +149,8 @@ gh release create v$(cat VERSION) dist/Explorer-$(cat VERSION).dmg* dist/Explore
 
 ## Known limitations
 
-- No Home / Gallery pages, drag-box selection, or Tiles / Content views yet
-- Right-clicking an item doesn't highlight it first (the menu still targets it)
+- No Home / Gallery pages or Tiles / Content views yet
+- Not notarized by Apple (needs a paid developer account), so macOS asks you to right-click → Open once
 - "Restore previous versions" and "Give access to" have no macOS equivalent
 - Shortcuts are macOS aliases, not `.lnk` files
 

@@ -2,10 +2,23 @@
 
 All notable changes are documented here. The project follows [Semantic Versioning](https://semver.org/).
 
-## [Unreleased]
+## [1.2.0] — 2026-10-07
 
 ### Added
-- `.dmg` disk image (drag-to-Applications) built by `make_dmg.sh` and included by `release.sh`
+- **Right-click selects** the item under the cursor, like Windows
+- **Drag-box (rubber-band) selection** in all views (⌘ to add)
+- **Copy / move progress bar with Cancel**; large copies no longer freeze the window; recursive copy via `copyfile` keeps metadata and clones on APFS
+- **Breadcrumb dropdowns**: click `>` to jump to a sibling or sub-folder
+- **Network section** in the navigation pane (mounted shares, Eject, *Connect to server…*); drives/shares appear live on mount/unmount
+- **App icon**
+- `.dmg` disk image (drag-to-Applications) built by `make_dmg.sh`, with an *Uninstall Explorer.command* inside
+- `uninstall.sh` (`--dry-run`, `--keep-settings`, `--yes`)
+- Homebrew cask: `brew install --cask preslav-panayotov/tap/explorer-macos`
+- GitHub Actions CI, issue / PR templates, `CONTRIBUTING.md`
+- 9 new tests (33 total)
+
+### Changed
+- Copy/paste is asynchronous: files appear when the copy finishes
 
 ## [1.1.0] — 2026-10-07
 
@@ -38,5 +51,4 @@ First public release.
 
 ### Known limitations
 - No Home / Gallery pages, drag-box selection, or Tiles or Content views
-- Right-clicking an item doesn't highlight it first (the menu still targets it)
 - App is ad-hoc signed, not notarized (see README for first-launch instructions)
