@@ -2,6 +2,10 @@
 
 # Explorer for macOS
 
+[![CI](https://github.com/preslav-panayotov/explorer-macos/actions/workflows/ci.yml/badge.svg)](https://github.com/preslav-panayotov/explorer-macos/actions/workflows/ci.yml)
+[![Latest release](https://img.shields.io/github/v/release/preslav-panayotov/explorer-macos)](https://github.com/preslav-panayotov/explorer-macos/releases/latest)
+[![License: MIT](https://img.shields.io/badge/license-MIT-blue.svg)](LICENSE)
+
 A native macOS file manager that looks and works like **Windows 11 File Explorer** — built with Swift and SwiftUI/AppKit. Open source, no dependencies.
 
 ## Why this exists
