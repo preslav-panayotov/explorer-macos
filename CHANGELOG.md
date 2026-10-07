@@ -2,7 +2,7 @@
 
 All notable changes are documented here. The project follows [Semantic Versioning](https://semver.org/).
 
-## [Unreleased]
+## [1.1.0] — 2026-10-07
 
 ### Added
 - Image, video and PDF **thumbnails** in the Medium / Large / Extra large icon views (cached, aspect-ratio preserving)
