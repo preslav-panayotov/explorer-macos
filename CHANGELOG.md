@@ -2,6 +2,11 @@
 
 All notable changes are documented here. The project follows [Semantic Versioning](https://semver.org/).
 
+## [Unreleased]
+
+### Added
+- `.dmg` disk image (drag-to-Applications) built by `make_dmg.sh` and included by `release.sh`
+
 ## [1.1.0] — 2026-10-07
 
 ### Added

@@ -9,4 +9,4 @@
 
 Full feature list: [docs/FEATURES.md](docs/FEATURES.md) · Changes: [CHANGELOG.md](CHANGELOG.md)
 
-**Install:** unzip `Explorer-1.1.0-macOS.zip`, move `Explorer.app` to `/Applications`, then right-click → Open the first time (the app is not notarized). Requires macOS 15+. SHA-256 is in the attached `.sha256` file.
+**Install:** open `Explorer-1.1.0.dmg` and drag Explorer.app to Applications (or unzip `Explorer-1.1.0-macOS.zip` and move `Explorer.app` to `/Applications`), then right-click → Open the first time (the app is not notarized). Requires macOS 15+. SHA-256 is in the attached `.sha256` file.

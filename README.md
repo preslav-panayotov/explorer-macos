@@ -64,9 +64,13 @@ If you're a Windows person stuck on a Mac (or just tired of Finder), this is for
 
 ## Install
 
-Download `Explorer-<version>-macOS.zip` from the [Releases](../../releases) page, unzip it and drag **Explorer.app** to `/Applications`.
+**Disk image (recommended):** download `Explorer-<version>.dmg` from the [Releases](../../releases) page, open it and drag **Explorer.app** onto **Applications**.
 
-The app is ad-hoc signed but not notarized, so the first time: **right-click → Open** (or run `xattr -dr com.apple.quarantine /Applications/Explorer.app`). Verify the download with the `.sha256` file attached to each release.
+**Zip:** alternatively download `Explorer-<version>-macOS.zip`, unzip it and move **Explorer.app** to `/Applications`.
+
+The app is ad-hoc signed but not notarized, so the first time: **right-click → Open** (or run `xattr -dr com.apple.quarantine /Applications/Explorer.app`). Verify downloads with the `.sha256` files attached to each release.
+
+**Uninstall:** quit Explorer and delete `/Applications/Explorer.app`. Optionally remove the terminal command (`rm "$(which explorermac)"`) and saved settings (`defaults delete com.local.explorer`).
 
 ## Terminal command: `explorermac`
 
@@ -86,6 +90,7 @@ Requires macOS 15+ and Xcode (Swift 6 toolchain).
 
 ```bash
 ./build_app.sh            # builds build/Explorer.app (ad-hoc signed)
+./make_dmg.sh             # builds dist/Explorer-<version>.dmg
 open build/Explorer.app
 
 swift test                # run the test suite
@@ -108,6 +113,7 @@ Sources/Explorer/
   Properties.swift     Properties dialog and Details pane
   FileItem.swift       file model, icon cache, folder-tree nodes
   Theme.swift          Windows 11 palette and folder icon
+build_app.sh / make_dmg.sh / release.sh   build the .app, the .dmg, and a full release package
 docs/                  FEATURES.md (full reference) and screenshots
 Resources/explorermac  the terminal launcher script (bundled into the app)
 Tests/ExplorerTests/   unit tests (navigation, file ops, undo, archives, grouping…)
@@ -121,10 +127,10 @@ To cut a release:
 
 ```bash
 # 1. bump VERSION, update CHANGELOG.md, commit
-./release.sh                                   # tests + builds dist/Explorer-<v>-macOS.zip (+ .sha256)
+./release.sh                                   # tests + builds dist/ .dmg and .zip (+ .sha256 files)
 git tag -a v$(cat VERSION) -m "Explorer $(cat VERSION)"
 git push origin main --tags
-gh release create v$(cat VERSION) dist/Explorer-$(cat VERSION)-macOS.zip* \
+gh release create v$(cat VERSION) dist/Explorer-$(cat VERSION).dmg* dist/Explorer-$(cat VERSION)-macOS.zip* \
    --title "Explorer $(cat VERSION)" --notes-file RELEASE_NOTES.md
 ```
 

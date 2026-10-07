@@ -1,5 +1,5 @@
 #!/bin/bash
-# Packages the current VERSION into dist/Explorer-<version>-macOS.zip (+ SHA-256).
+# Packages the current VERSION into dist/: Explorer-<version>.dmg and Explorer-<version>-macOS.zip (+ SHA-256 files).
 # Usage: ./release.sh        then tag + publish (see CONTRIBUTING.md / README "Releases")
 set -euo pipefail
 cd "$(dirname "$0")"
@@ -13,3 +13,4 @@ ditto -c -k --keepParent build/Explorer.app "$ZIP"
 ( cd dist && shasum -a 256 "Explorer-$VERSION-macOS.zip" > "Explorer-$VERSION-macOS.zip.sha256" )
 echo "Created $ZIP"
 cat "dist/Explorer-$VERSION-macOS.zip.sha256"
+./make_dmg.sh
