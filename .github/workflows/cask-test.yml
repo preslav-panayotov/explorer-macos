@@ -1,0 +1,32 @@
+name: Homebrew cask test
+
+# Installs the published cask on a clean macOS runner and checks it works and sticks around.
+on:
+  workflow_dispatch:
+  release:
+    types: [published]
+
+jobs:
+  cask:
+    runs-on: macos-15
+    steps:
+      - name: Install cask from the tap
+        run: |
+          brew tap preslav-panayotov/tap
+          brew install --cask preslav-panayotov/tap/explorer-macos
+      - name: Verify app, signature, version and command
+        run: |
+          test -d /Applications/Explorer.app
+          codesign --verify --deep --strict /Applications/Explorer.app
+          /usr/libexec/PlistBuddy -c "Print CFBundleShortVersionString" /Applications/Explorer.app/Contents/Info.plist
+          explorermac --help
+          explorermac /tmp   # must not fail (opens a window if a GUI session exists)
+      - name: App is still there after 150 s
+        run: |
+          sleep 150
+          test -d /Applications/Explorer.app && echo "still installed"
+      - name: Uninstall
+        run: |
+          brew uninstall --cask --zap explorer-macos
+          test ! -e /Applications/Explorer.app
+          test ! -e "$(brew --prefix)/bin/explorermac"
