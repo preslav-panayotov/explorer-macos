@@ -12,6 +12,7 @@ Everything the app can do, organised the way Windows File Explorer organises it.
 - [Properties and the Details pane](#properties-and-the-details-pane)
 - [Search](#search)
 - [Windows and tabs](#windows-and-tabs)
+- [Terminal command](#terminal-command-explorermac)
 - [Keyboard shortcuts](#keyboard-shortcuts)
 - [Command-line options](#command-line-options)
 - [Behaviour notes](#behaviour-notes)
@@ -46,6 +47,8 @@ Light and dark appearance follow macOS, using the Windows 11 palette (yellow fol
 - Columns: Name, Date modified, Type, Size. Click a header to sort, click again to reverse (arrow shows direction). Drag a column divider to resize.
 - Folders are always listed before files.
 - Hidden items are hidden by default; toggle with ⇧⌘. (View → Show → Hidden items). Hidden items appear dimmed.
+
+**Thumbnails** — Medium, Large and Extra large icon views show real previews for images, videos and PDFs (Quick Look), keeping the original aspect ratio. They load in the background, are cached, and refresh when a file changes. Other files show their normal icon.
 
 **Sort by** (command bar → Sort, right-click → Sort by): Name (natural, case-insensitive order), Date modified, Type, Size, with Ascending / Descending.
 
@@ -117,6 +120,20 @@ Type in the toolbar search field to search the current folder **and all sub-fold
 - Right-click a folder → *Open in new tab* / *Open in new window*.
 - Every window/tab has independent navigation history, selection, view mode and sorting.
 
+## Terminal command: `explorermac`
+
+```bash
+explorermac /Users            # open a folder (case is corrected: /users → /Users)
+explorermac                   # open the current directory
+explorermac ~/Desktop/a.txt   # open the file's folder with the file selected
+explorermac --help
+```
+
+- If Explorer is already running, the folder opens in a **new window**; otherwise the app launches straight into that folder (no extra home window).
+- A missing path prints `explorermac: no such file or directory: …` and exits with status 1.
+- **Install:** Explorer menu → *Install ‘explorermac’ Command…* copies the script to the first writable of `/usr/local/bin`, `/opt/homebrew/bin`, `~/.local/bin`. Manual install: copy `Resources/explorermac` (also inside the app at `Contents/Resources/explorermac`) anywhere on your PATH and `chmod +x` it.
+- Under the hood it opens `explorermac://open?path=<dir>&select=<name>`; the app registers that URL scheme, and also accepts `open -a Explorer <folder>`.
+
 ## Keyboard shortcuts
 
 | Action | Shortcut |
@@ -165,4 +182,4 @@ open -n build/Explorer.app --args --path ~/Documents --view "Large icons" \
 - The app is **not sandboxed** so it can browse your whole disk. macOS will ask for permission to Documents, Downloads, etc.; grant *Full Disk Access* for unrestricted browsing.
 - Archives are handled by the system tools `zip`, `ditto` and `tar`; printing uses `lpr`; image rotation uses `sips`.
 - Shortcuts are macOS aliases, not Windows `.lnk` files.
-- Not implemented in 1.0.0: Home/Gallery pages, drag-box selection, Tiles and Content views, image thumbnails in icon views, *Restore previous versions*, *Give access to*.
+- Not implemented in 1.0.0: Home/Gallery pages, drag-box selection, Tiles and Content views, *Restore previous versions*, *Give access to*.

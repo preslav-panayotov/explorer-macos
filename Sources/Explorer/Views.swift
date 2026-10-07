@@ -67,7 +67,23 @@ struct ContentView: View {
         ) {
             Button("OK", role: .cancel) {}
         } message: { Text(state.errorMessage ?? "") }
-        .background(WindowAccessor())
+        .background(WindowAccessor(state: state))
+        .onOpenURL { url in
+            guard let (dir, sel) = Launch.parse(url) else { return }
+            state.go(to: dir)
+            if Date().timeIntervalSince(Launch.launchTime) < 3 {
+                Task { @MainActor in
+                    try? await Task.sleep(for: .milliseconds(500))
+                    WindowTabs.closeUntouchedDefaults(except: state)
+                }
+            }
+            if let sel {
+                Task { @MainActor in
+                    try? await Task.sleep(for: .milliseconds(400))
+                    if let u = state.items.first(where: { $0.name == sel })?.url { state.selection = [u]; state.anchor = u }
+                }
+            }
+        }
         .frame(minWidth: 800, minHeight: 460)
     }
 }

@@ -13,6 +13,21 @@ extension FocusedValues {
 @MainActor
 enum WindowTabs {
     static var pendingParent: NSWindow?
+    private static var registry: [(state: ExplorerState, window: NSWindow)] = []
+
+    static func register(_ s: ExplorerState, _ w: NSWindow) {
+        registry.removeAll { $0.window === w || !$0.window.isVisible && $0.window.contentView == nil }
+        registry.append((s, w))
+    }
+
+    /// When the app is cold-started by `explorermac <dir>`, SwiftUI also opens its default home window.
+    /// Close those untouched default windows once the requested folder window exists.
+    static func closeUntouchedDefaults(except keep: ExplorerState) {
+        let home = FileManager.default.homeDirectoryForCurrentUser.normalized
+        for (s, w) in registry where s !== keep && s.back.isEmpty && s.current == home && s.selection.isEmpty {
+            w.close()
+        }
+    }
     static func configure(_ w: NSWindow) {
         w.tabbingIdentifier = "explorer"
         if let p = pendingParent, p !== w {
@@ -24,9 +39,10 @@ enum WindowTabs {
 }
 
 struct WindowAccessor: NSViewRepresentable {
+    let state: ExplorerState
     func makeNSView(context: Context) -> NSView {
         let v = NSView()
-        DispatchQueue.main.async { if let w = v.window { WindowTabs.configure(w) } }
+        DispatchQueue.main.async { if let w = v.window { WindowTabs.configure(w); WindowTabs.register(state, w) } }
         return v
     }
     func updateNSView(_ nsView: NSView, context: Context) {}
@@ -35,6 +51,7 @@ struct WindowAccessor: NSViewRepresentable {
 /// Command-line options (handy for demos/screenshots):
 /// `--path <dir> --view <mode> --group <key> --details-pane --hidden --select a,b`
 enum Launch {
+    static let launchTime = Date()
     static func value(_ key: String) -> String? {
         let a = CommandLine.arguments
         guard let i = a.firstIndex(of: key), i + 1 < a.count else { return nil }
@@ -56,10 +73,36 @@ enum Launch {
     }
 }
 
+extension Launch {
+    /// Parses `explorermac://open?path=…&select=…` or a plain `file://` URL.
+    static func parse(_ url: URL) -> (dir: URL, select: String?)? {
+        if url.isFileURL {
+            var isDir: ObjCBool = false
+            guard FileManager.default.fileExists(atPath: url.path, isDirectory: &isDir) else { return nil }
+            return isDir.boolValue ? (canonical(url), nil) : (canonical(url.deletingLastPathComponent()), url.lastPathComponent)
+        }
+        guard url.scheme == "explorermac",
+              let items = URLComponents(url: url, resolvingAgainstBaseURL: false)?.queryItems,
+              let path = items.first(where: { $0.name == "path" })?.value else { return nil }
+        let dir = URL(filePath: path)
+        guard FileManager.default.fileExists(atPath: dir.path) else { return nil }
+        return (canonical(dir), items.first(where: { $0.name == "select" })?.value)
+    }
+
+    /// Fixes letter-case typed in the terminal (`/users` → `/Users`) without resolving symlinks.
+    static func canonical(_ url: URL) -> URL {
+        let n = url.normalized
+        if let c = (try? n.resourceValues(forKeys: [.canonicalPathKey]))?.canonicalPath,
+           c.lowercased() == n.path.lowercased() { return URL(filePath: c).normalized }
+        return n
+    }
+}
+
 @main
 struct ExplorerApp: App {
     init() {
         NSApplication.shared.setActivationPolicy(.regular)
+        _ = Launch.launchTime
         if CommandLine.arguments.contains("--light") { NSApp.appearance = NSAppearance(named: .aqua) }
         if CommandLine.arguments.contains("--dark") { NSApp.appearance = NSAppearance(named: .darkAqua) }
     }
@@ -86,6 +129,9 @@ struct ExplorerCommands: Commands {
     private var home: URL { FileManager.default.homeDirectoryForCurrentUser }
 
     var body: some Commands {
+        CommandGroup(after: .appInfo) {
+            Button("Install ‘explorermac’ Command…") { CLIInstaller.install() }
+        }
         CommandGroup(replacing: .newItem) {
             Button("New Window") { openWindow(value: WindowSpec(url: ex?.current ?? home)) }.keyboardShortcut("n")
             Button("New Tab") {

@@ -17,9 +17,11 @@ If you're a Windows person stuck on a Mac (or just tired of Finder), this is for
 | ![Grouped by date](docs/screenshots/03-grouped-by-date.png) | ![Grouped by size](docs/screenshots/04-grouped-by-size.png) |
 | **Group by Date modified** | **Group by Size** |
 | ![Large icons](docs/screenshots/05-large-icons.png) | ![Medium icons, hidden items shown](docs/screenshots/06-medium-icons-dark.png) |
-| **Large icons** | **Medium icons** with hidden items shown |
+| **Large icons** with image thumbnails | **Medium icons** with hidden items shown |
 
 ![List view](docs/screenshots/07-small-icons-list.png)
+
+![Image thumbnails, extra large icons](docs/screenshots/08-thumbnails-extra-large-dark.png)
 
 ## Features
 
@@ -31,6 +33,7 @@ If you're a Windows person stuck on a Mac (or just tired of Finder), this is for
 - Command bar: New, Cut, Copy, Paste, Rename, Share, Delete, Sort, View
 - Details view with resizable, sortable columns; six view modes (Extra large → Small icons, List, Details)
 - Group by Name / Date modified / Type / Size, Details pane with thumbnail, status bar
+- Real thumbnails for images, videos and PDFs in the icon views
 - Windows 11 colours in light and dark mode, inline rename, native macOS tabs (⌘T)
 
 **Right-click menus** (modelled on Windows 11)
@@ -65,6 +68,18 @@ Download `Explorer-<version>-macOS.zip` from the [Releases](../../releases) page
 
 The app is ad-hoc signed but not notarized, so the first time: **right-click → Open** (or run `xattr -dr com.apple.quarantine /Applications/Explorer.app`). Verify the download with the `.sha256` file attached to each release.
 
+## Terminal command: `explorermac`
+
+Open any folder from the terminal:
+
+```bash
+explorermac /Users          # open /Users in Explorer (new window if it's already running)
+explorermac                 # open the current directory
+explorermac ~/Desktop/a.txt # open ~/Desktop with a.txt selected
+```
+
+Install it from the app: **Explorer menu → Install ‘explorermac’ Command…** (it copies the script to a writable folder on your PATH — `/usr/local/bin`, `/opt/homebrew/bin` or `~/.local/bin`). From a source checkout you can also run `cp Resources/explorermac /opt/homebrew/bin/`.
+
 ## Build from source
 
 Requires macOS 15+ and Xcode (Swift 6 toolchain).
@@ -88,10 +103,13 @@ Sources/Explorer/
   ContextMenus.swift   Windows 11-style right-click menus
   ExplorerState.swift  navigation, selection, sorting, grouping, clipboard, undo
   FileActions.swift    compress/extract, shortcuts, New menu, Open with, Share, Send to
+  Thumbnails.swift     Quick Look thumbnails for the icon views
+  CLIInstaller.swift   installs the `explorermac` terminal command
   Properties.swift     Properties dialog and Details pane
   FileItem.swift       file model, icon cache, folder-tree nodes
   Theme.swift          Windows 11 palette and folder icon
 docs/                  FEATURES.md (full reference) and screenshots
+Resources/explorermac  the terminal launcher script (bundled into the app)
 Tests/ExplorerTests/   unit tests (navigation, file ops, undo, archives, grouping…)
 ```
 
@@ -112,7 +130,7 @@ gh release create v$(cat VERSION) dist/Explorer-$(cat VERSION)-macOS.zip* \
 
 ## Known limitations
 
-- No Home / Gallery pages, drag-box selection, Tiles / Content views, or image thumbnails in icon views yet
+- No Home / Gallery pages, drag-box selection, or Tiles / Content views yet
 - Right-clicking an item doesn't highlight it first (the menu still targets it)
 - "Restore previous versions" and "Give access to" have no macOS equivalent
 - Shortcuts are macOS aliases, not `.lnk` files

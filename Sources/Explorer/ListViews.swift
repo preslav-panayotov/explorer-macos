@@ -271,7 +271,7 @@ struct IconsGrid: View {
                     }.padding(.horizontal, 6).frame(height: 24)
                 } else {
                     VStack(spacing: 4) {
-                        ItemIcon(item: item, size: mode.iconSize)
+                        ThumbIcon(item: item, size: mode.iconSize)
                         if renaming { RenameField(state: state, alignment: .center) }
                         else { Text(item.name).lineLimit(2).multilineTextAlignment(.center) }
                     }.padding(6).frame(maxWidth: .infinity)

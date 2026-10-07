@@ -1,0 +1,57 @@
+#!/bin/bash
+# explorermac — open a folder (or reveal a file) in Explorer for macOS.
+#   explorermac /Users          open /Users
+#   explorermac                 open the current directory
+#   explorermac ~/a/file.txt    open ~/a with file.txt selected
+BUNDLE_ID="com.local.explorer"
+
+usage() {
+  cat <<USAGE
+Usage: explorermac [directory|file]
+
+Opens the folder in Explorer for macOS (a new window if the app is already running).
+With a file, its folder is opened and the file is selected. No argument = current directory.
+USAGE
+}
+
+case "${1:-}" in
+  -h|--help) usage; exit 0 ;;
+esac
+
+target="${1:-.}"
+# expand a leading ~ if the shell didn't (e.g. quoted)
+case "$target" in "~") target="$HOME" ;; "~/"*) target="$HOME/${target#\~/}" ;; esac
+
+if [ ! -e "$target" ]; then
+  echo "explorermac: no such file or directory: $target" >&2
+  exit 1
+fi
+
+select_name=""
+if [ -d "$target" ]; then
+  dir=$(cd "$target" && pwd)
+else
+  dir=$(cd "$(dirname "$target")" && pwd)
+  select_name=$(basename "$target")
+fi
+
+# percent-encode (bytewise) so spaces / unicode survive the URL
+urlencode() {
+  local LC_ALL=C s="$1" i c out=""
+  for ((i = 0; i < ${#s}; i++)); do
+    c="${s:i:1}"
+    case "$c" in
+      [a-zA-Z0-9.~_/-]) out+="$c" ;;
+      *) out+=$(printf '%%%02X' "'$c") ;;
+    esac
+  done
+  printf '%s' "$out"
+}
+
+url="explorermac://open?path=$(urlencode "$dir")"
+[ -n "$select_name" ] && url+="&select=$(urlencode "$select_name")"
+
+if ! open -b "$BUNDLE_ID" "$url" 2>/dev/null; then
+  echo "explorermac: Explorer.app isn't installed (or hasn't been opened once so macOS can find it)." >&2
+  exit 1
+fi

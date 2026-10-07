@@ -207,4 +207,62 @@ final class ExplorerTests: XCTestCase {
         let info = PropInfo.compute([sub])
         XCTAssertEqual(info.files, 1); XCTAssertEqual(info.size, 5)
     }
+
+    // MARK: explorermac command + thumbnails
+
+    func testParseExplorermacURL() throws {
+        var c = URLComponents(string: "explorermac://open")!
+        c.queryItems = [.init(name: "path", value: dir.path), .init(name: "select", value: "a b.txt")]
+        let r = try XCTUnwrap(Launch.parse(c.url!))
+        XCTAssertEqual(r.dir, dir)
+        XCTAssertEqual(r.select, "a b.txt")
+        XCTAssertNil(Launch.parse(URL(string: "explorermac://open?path=/definitely/not/here")!))
+        XCTAssertNil(Launch.parse(URL(string: "https://example.com")!))
+    }
+
+    func testParseFileURLs() throws {
+        try touch("f.txt")
+        let d = try XCTUnwrap(Launch.parse(dir))
+        XCTAssertEqual(d.dir, dir); XCTAssertNil(d.select)
+        let f = try XCTUnwrap(Launch.parse(dir.appending(path: "f.txt")))
+        XCTAssertEqual(f.dir, dir); XCTAssertEqual(f.select, "f.txt")
+    }
+
+    func testLowercasePathIsCanonicalised() throws {
+        try XCTSkipUnless(fm.fileExists(atPath: "/users"), "case-sensitive volume")
+        var c = URLComponents(string: "explorermac://open")!
+        c.queryItems = [.init(name: "path", value: "/users/")]
+        XCTAssertEqual(Launch.parse(c.url!)?.dir.path, "/Users")
+    }
+
+    private func runCLI(_ args: [String]) throws -> (status: Int32, err: String) {
+        let script = URL(filePath: #filePath).deletingLastPathComponent().deletingLastPathComponent()
+            .deletingLastPathComponent().appending(path: "Resources/explorermac")
+        let p = Process(); p.executableURL = script; p.arguments = args
+        let e = Pipe(); p.standardError = e; p.standardOutput = Pipe()
+        try p.run(); p.waitUntilExit()
+        return (p.terminationStatus, String(decoding: e.fileHandleForReading.readDataToEndOfFile(), as: UTF8.self))
+    }
+
+    func testCLIScriptRejectsMissingPathAndShowsHelp() throws {
+        let bad = try runCLI(["/definitely/not/here"])
+        XCTAssertEqual(bad.status, 1)
+        XCTAssertTrue(bad.err.contains("no such file or directory"))
+        XCTAssertEqual(try runCLI(["--help"]).status, 0)
+    }
+
+    func testThumbnailGeneratedForImagesOnly() async throws {
+        let png = dir.appending(path: "pic.png")
+        let rep = NSBitmapImageRep(bitmapDataPlanes: nil, pixelsWide: 64, pixelsHigh: 48, bitsPerSample: 8,
+                                   samplesPerPixel: 4, hasAlpha: true, isPlanar: false,
+                                   colorSpaceName: .deviceRGB, bytesPerRow: 0, bitsPerPixel: 0)!
+        try rep.representation(using: .png, properties: [:])!.write(to: png)
+        try touch("plain.txt")
+        XCTAssertTrue(ThumbCache.supportsThumbnail(png))
+        XCTAssertFalse(ThumbCache.supportsThumbnail(dir.appending(path: "plain.txt")))
+        let item = try XCTUnwrap(FileItem(url: png))
+        let img = await ThumbCache.shared.thumbnail(for: item, points: 64)
+        XCTAssertNotNil(img)
+        XCTAssertNotNil(ThumbCache.shared.cached(item, points: 64), "second request is served from cache")
+    }
 }

@@ -2,6 +2,16 @@
 
 All notable changes are documented here. The project follows [Semantic Versioning](https://semver.org/).
 
+## [Unreleased]
+
+### Added
+- Image, video and PDF **thumbnails** in the Medium / Large / Extra large icon views (cached, aspect-ratio preserving)
+- **`explorermac <dir>`** terminal command: opens a folder (or reveals a file) in a new Explorer window; fixes path letter-case; installable from the app menu; `explorermac://` URL scheme and `open -a Explorer <folder>` support
+- 5 new tests (24 total)
+
+### Fixed
+- Cold-starting the app with a folder no longer leaves an extra home-folder window
+
 ## [1.0.0] — 2026-10-07
 
 First public release.
@@ -22,6 +32,6 @@ First public release.
 - 19 unit tests covering navigation, file operations, undo, archives, grouping, selection and properties
 
 ### Known limitations
-- No Home / Gallery pages, drag-box selection, Tiles or Content views, or image thumbnails in icon views
+- No Home / Gallery pages, drag-box selection, or Tiles or Content views
 - Right-clicking an item doesn't highlight it first (the menu still targets it)
 - App is ad-hoc signed, not notarized (see README for first-launch instructions)
