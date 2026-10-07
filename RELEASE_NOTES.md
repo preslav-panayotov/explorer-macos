@@ -1,4 +1,10 @@
-## Explorer 1.2.0
+## Explorer 1.2.1 (includes everything from 1.2.0)
+
+**Fixed:** `explorermac` works right after installing (Homebrew or DMG) even before macOS has registered the app.
+
+---
+
+### What's new since 1.1.0
 
 **New**
 - **Right-click selects the item** under the cursor, like Windows
@@ -15,4 +21,4 @@ brew install --cask preslav-panayotov/tap/explorer-macos
 
 Full feature list: [docs/FEATURES.md](docs/FEATURES.md) · Changes: [CHANGELOG.md](CHANGELOG.md)
 
-**Install:** open `Explorer-1.2.0.dmg` and drag Explorer.app to Applications (or unzip `Explorer-1.2.0-macOS.zip`), then right-click → Open the first time (the app is not notarized). Requires macOS 15+. SHA-256 files are attached.
+**Install:** open `Explorer-1.2.1.dmg` and drag Explorer.app to Applications (or unzip `Explorer-1.2.1-macOS.zip`), then right-click → Open the first time (the app is not notarized). Requires macOS 15+. SHA-256 files are attached.

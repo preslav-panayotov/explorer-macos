@@ -51,7 +51,19 @@ urlencode() {
 url="explorermac://open?path=$(urlencode "$dir")"
 [ -n "$select_name" ] && url+="&select=$(urlencode "$select_name")"
 
-if ! open -b "$BUNDLE_ID" "$url" 2>/dev/null; then
-  echo "explorermac: Explorer.app isn't installed (or hasn't been opened once so macOS can find it)." >&2
-  exit 1
-fi
+# Preferred: let Launch Services find the app by bundle id.
+if open -b "$BUNDLE_ID" "$url" 2>/dev/null; then exit 0; fi
+
+# Fallback (e.g. right after installing, before macOS has registered the app): find Explorer.app ourselves.
+candidates=()
+src="$0"
+[ -L "$src" ] && src=$(readlink "$src")          # Homebrew installs a symlink into the app bundle
+case "$src" in /*) ;; *) src="$(dirname "$0")/$src" ;; esac
+case "$src" in *.app/Contents/Resources/*) candidates+=("${src%%.app/Contents/Resources/*}.app") ;; esac
+candidates+=("/Applications/Explorer.app" "$HOME/Applications/Explorer.app")
+for app in "${candidates[@]}"; do
+  if [ -d "$app" ] && open -a "$app" "$url" 2>/dev/null; then exit 0; fi
+done
+
+echo "explorermac: couldn't find Explorer.app. Install it (see the README) and open it once." >&2
+exit 1

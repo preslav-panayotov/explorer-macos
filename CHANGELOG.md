@@ -2,6 +2,14 @@
 
 All notable changes are documented here. The project follows [Semantic Versioning](https://semver.org/).
 
+## [1.2.1] — 2026-10-07
+
+### Fixed
+- `explorermac` now finds Explorer.app itself when macOS hasn't registered it yet (e.g. right after `brew install`), instead of failing
+
+### Added
+- CI job that installs the Homebrew cask on a clean macOS runner and verifies the app, signature and command
+
 ## [1.2.0] — 2026-10-07
 
 ### Added
